@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> 天气预报 </title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/map/js/china.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0"></script>
+
+    <style>
+        body { background: #eef2f6; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .main-container { display: flex; height: 100vh; }
+
+        /* Sidebar Styles */
+        .sidebar { width: 300px; background: white; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 10; box-shadow: 2px 0 15px rgba(0,0,0,0.02); }
+        .sidebar-header { padding: 20px; background: #0f172a; color: white; text-align: center; font-weight: 600; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .city-list { flex: 1; overflow-y: auto; padding: 12px; background: #f8fafc; }
+
+        /* 城市方块 (Mini Widget) */
+        .city-card {
+            background: white; border-radius: 12px; padding: 12px; margin-bottom: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.03); cursor: pointer; transition: all 0.2s;
+            border: 1px solid #e2e8f0; position: relative; overflow: hidden;
+        }
+        .city-card:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.06); }
+        .city-card.active { border: 2px solid #3b82f6; background: #eff6ff; }
+
+        /* 预警状态样式 */
+        .city-card.alert-danger { border: 1px solid #fecaca; background: #fef2f2; animation: pulse-border 2s infinite; }
+        .city-card.alert-warning { border: 1px solid #fde68a; background: #fffbeb; }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .c-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .c-name { font-weight: 700; font-size: 1rem; color: #1e293b; }
+        .c-prov { font-size: 0.75rem; color: #64748b; }
+
+        .c-body { display: flex; justify-content: space-between; align-items: center; }
+        .c-temp { font-size: 1.2rem; font-weight: 800; color: #334155; }
+        .c-icon { font-size: 1.5rem; }
+
+        .c-footer { display: flex; gap: 5px; margin-top: 5px; }
+        .badge-pm { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; color: white; }
+        .badge-alert { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; color: #7f1d1d; background: #fee2e2; border: 1px solid #fecaca; display: none; }
+
+        /* Main Content */
+        .content-area { flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 16px; overflow-y: auto; }
+        .map-section { height: 50%; background: white; border-radius: 16px; position: relative; box-shadow: 0 4px 12px rgba(0,0,0,0.03); overflow: hidden; border: 1px solid #fff; }
+        #chinaMap { width: 100%; height: 100%; }
+        .map-controls { position: absolute; top: 20px; left: 20px; z-index: 99; }
+        .search-box { width: 300px; background: rgba(255,255,255,0.9); padding: 8px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 5px; backdrop-filter: blur(5px); }
+        .btn-reset-map { position: absolute; bottom: 20px; right: 20px; width: 44px; height: 44px; background: white; border-radius: 50%; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; transition: 0.2s; z-index: 99; }
+
+        /* Data Panel */
+        .data-section { flex: 1; display: flex; gap: 16px; min-height: 0; }
+        .glass-card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); display: flex; flex-direction: column; border: 1px solid #fff; }
+        .info-card { width: 360px; position: relative; overflow-y: auto; }
+        .chart-card { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+        .loading-mask { position: absolute; inset: 0; background: rgba(255,255,255,0.85); z-index: 20; display: flex; justify-content: center; align-items: center; border-radius: 16px; visibility: hidden; opacity: 0; transition: opacity 0.3s; }
+
+        /* Weather Details */
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .detail-box { background: #f8fafc; padding: 10px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0; }
+        .detail-label { font-size: 0.75rem; color: #64748b; margin-bottom: 2px; }
+        .detail-val { font-weight: 700; color: #334155; font-size: 0.95rem; }
+
+        /* Timeline & Forecast */
+        .timeline-container { display: flex; margin-top: auto; border-top: 1px solid #eee; height: 90px; }
+        .history-zone { width: 22%; background: #f1f5f9; border-right: 2px dashed #cbd5e1; padding: 5px; display: flex; justify-content: space-around; position: relative; }
+        .history-zone::after { content: "历史"; position: absolute; top: 2px; left: 2px; font-size: 0.6rem; color: #94a3b8; }
+        .future-zone { flex: 1; padding: 5px; display: flex; justify-content: space-between; overflow-x: auto; }
+
+        .forecast-item { text-align: center; font-size: 0.8rem; display: flex; flex-direction: column; justify-content: center; min-width: 50px; }
+        .forecast-item.today { background: #fff7ed; border-radius: 8px; border: 1px solid #fed7aa; }
+        .f-date { font-size: 0.7rem; color: #64748b; margin-bottom: 2px; }
+        .f-icon { font-size: 1.2rem; margin: 2px 0; }
+
+        /* Alerts */
+        .alert-box { margin-bottom: 15px; }
+        .alert-item { padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; font-size: 0.85rem; display: flex; align-items: center; animation: slideDown 0.4s ease-out; border-left: 5px solid transparent; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }
+        .alert-danger { background: #fff5f5; color: #c53030; border-left-color: #c53030; }
+        .alert-warning { background: #fffaf0; color: #c05621; border-left-color: #ed8936; }
+        .alert-primary { background: #ebf8ff; color: #2b6cb0; border-left-color: #4299e1; }
+        .alert-safe { background: #f0fff4; color: #2f855a; border-left-color: #48bb78; }
+        .pulse-danger { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(229, 62, 62, 0); } 100% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="main-container">
+    <div class="sidebar">
+        <div class="sidebar-header">中国各省市天气预报系统</div>
+        <div class="city-list" id="savedList">
+            </div>
+    </div>
+
+    <div class="content-area">
+        <div class="map-section">
+            <div class="map-controls">
+                <div class="search-box">
+                    <input type="text" id="searchInput" class="form-control border-0 bg-transparent" placeholder="搜索 (如: 海口, 台北)..." onkeyup="if(event.key==='Enter') searchMap()">
+                    <button class="btn btn-sm btn-dark rounded-pill px-3" onclick="searchMap()">定位</button>
+                </div>
+            </div>
+            <div class="btn-reset-map" onclick="resetMap()" title="全局视角">⟲</div>
+            <div id="chinaMap"></div>
+        </div>
+
+        <div class="data-section" id="dataPanel" style="visibility: hidden;">
+            <div class="info-card glass-card">
+                <div id="loadingMask" class="loading-mask"><div class="spinner-border text-primary"></div></div>
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <h3 id="dName" class="fw-bold mb-0">--</h3>
+                        <div id="dProv" class="text-muted small">--</div>
+                    </div>
+                    <span id="dDayNight" class="badge rounded-pill bg-light text-dark border">--</span>
+                </div>
+
+                <div id="alertContainer" class="alert-box"></div>
+
+                <div class="d-flex align-items-center justify-content-between my-2">
+                    <div>
+                        <div style="font-size: 3.5rem; line-height: 1; font-weight: 800; letter-spacing: -2px;" id="dTemp">--</div>
+                        <div id="dWeather" class="mt-1 fs-5 fw-bold text-secondary">--</div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fs-4 fw-bold" id="dPM">--</div>
+                        <div class="small text-muted">PM2.5</div>
+                    </div>
+                </div>
+
+                <div class="detail-grid">
+                    <div class="detail-box"><div class="detail-label">风况</div><div class="detail-val"><span id="dWindDir">--</span> <span id="dWindSpeed">--</span></div></div>
+                    <div class="detail-box"><div class="detail-label">体感</div><div class="detail-val"><span id="dFeel">--</span>°C</div></div>
+                    <div class="detail-box"><div class="detail-label">湿度</div><div class="detail-val"><span id="dHum">--</span>%</div></div>
+                    <div class="detail-box"><div class="detail-label">气压</div><div class="detail-val"><span id="dPress">--</span>hPa</div></div>
+                </div>
+
+                <button id="btnAction" class="btn btn-dark w-100 mt-auto py-2 fw-bold shadow-sm rounded-pill" onclick="toggleSave()">❤️ 加入关注</button>
+            </div>
+
+            <div class="chart-card glass-card">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="text-muted fw-bold mb-0">📈 气温走势 (前2天 - 未来7天)</h6>
+                </div>
+
+                <div style="flex: 1; min-height: 0;">
+                    <canvas id="tempChart"></canvas>
+                </div>
+
+                <div class="timeline-container">
+                    <div class="history-zone" id="historyRow"></div>
+                    <div class="future-zone" id="futureRow"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let myMap = null;
+    let myLineChart = null;
+    let savedCities = [];
+    let currentCity = null;
+    let mapDataCache = [];
+
+    const WMO_CODE = {
+        0: ["☀️", "晴"], 1: ["🌤️", "多云"], 2: ["☁️", "阴"], 3: ["☁️", "阴"],
+        45: ["🌫️", "雾"], 51: ["🌧️", "细雨"], 61: ["🌧️", "小雨"], 63: ["🌧️", "中雨"],
+        65: ["☔", "大雨"], 71: ["❄️", "小雪"], 73: ["❄️", "中雪"], 75: ["❄️", "大雪"],
+        80: ["⛈️", "阵雨"], 95: ["⚡", "雷雨"], 96: ["⚡", "雷雹"], 99: ["⚡", "暴雹"]
+    };
+
+    function getProvinceColor(prov) {
+        if (!prov) return '#64748b';
+        let hash = 0;
+        for (let i = 0; i < prov.length; i++) hash = prov.charCodeAt(i) + ((hash << 5) - hash);
+        const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+        return '#' + "00000".substring(0, 6 - c.length) + c;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initMap();
+        loadSavedList();
+    });
+
+    async function initMap() {
+        myMap = echarts.init(document.getElementById('chinaMap'));
+        myMap.showLoading();
+        const res = await fetch('/api/map_data');
+        mapDataCache = await res.json();
+        myMap.hideLoading();
+        renderMap(mapDataCache);
+        myMap.on('click', (params) => { if (params.data && params.data.raw) { selectCity(params.data.raw); zoomToCity(params.data.raw); }});
+        window.onresize = () => myMap.resize();
+    }
+
+    function renderMap(data) {
+        myMap.setOption({
+            backgroundColor: '#fff',
+            geo: { map: 'china', roam: true, zoom: 1.2, label: { show: false }, itemStyle: { areaColor: '#f8fafc', borderColor: '#cbd5e1', borderWidth: 1 }, emphasis: { itemStyle: { areaColor: '#e2e8f0' } } },
+            series: [{ type: 'scatter', coordinateSystem: 'geo', data: data.map(c => ({ name: c.name, value: [c.lon, c.lat], raw: c, itemStyle: { color: getProvinceColor(c.province), opacity: 0.8 } })), symbolSize: 5, large: true }]
+        });
+    }
+    function zoomToCity(city) {
+        myMap.setOption({
+            geo: { center: [city.lon, city.lat], zoom: 6 },
+            series: [
+                { name: 'City', type: 'scatter', coordinateSystem: 'geo', data: mapDataCache.map(c => ({ name: c.name, value: [c.lon, c.lat], raw: c, itemStyle: { color: getProvinceColor(c.province), opacity: 0.5 } })), symbolSize: 5 },
+                { name: 'Highlight', type: 'effectScatter', coordinateSystem: 'geo', data: [{ name: city.name, value: [city.lon, city.lat], raw: city }], symbolSize: 20, rippleEffect: { brushType: 'stroke', scale: 4 }, itemStyle: { color: '#ef4444' }, zlevel: 2 }
+            ]
+        });
+    }
+    function resetMap() { myMap.setOption({ geo: { center: null, zoom: 1.2 }, series: [{ type: 'scatter', coordinateSystem: 'geo', data: mapDataCache.map(c => ({ name: c.name, value: [c.lon, c.lat], raw: c, itemStyle: { color: getProvinceColor(c.province), opacity: 0.8 } })), symbolSize: 5 }, { type: 'effectScatter', data: [] }] }); }
+
+    async function searchMap() {
+        const q = document.getElementById('searchInput').value.trim();
+        if(!q) return;
+        const res = await fetch(`/api/find_city?q=${q}`);
+        const json = await res.json();
+        if(json.status === 'success') { selectCity(json.city); zoomToCity(json.city); } else { alert('未找到'); }
+    }
+
+    async function selectCity(city) {
+        currentCity = city;
+        document.getElementById('dataPanel').style.visibility = 'visible';
+        const mask = document.getElementById('loadingMask');
+        mask.style.visibility = 'visible'; mask.style.opacity = '1';
+
+        document.getElementById('dName').innerText = city.name;
+        document.getElementById('dProv').innerText = city.province;
+
+        // Highlight active card
+        document.querySelectorAll('.city-card').forEach(e => e.classList.remove('active'));
+        const li = document.getElementById(`card-${city.name}`);
+        if(li) { li.classList.add('active'); li.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        updateBtn();
+
+        try {
+            const res = await fetch(`/api/weather_detail?lat=${city.lat}&lon=${city.lon}`);
+            const data = await res.json();
+            if(data.status === 'success') renderDashboard(data);
+        } catch(e) { console.error(e); }
+        finally { mask.style.opacity = '0'; setTimeout(() => mask.style.visibility = 'hidden', 300); }
+    }
+
+    function renderDashboard(data) {
+        const c = data.current;
+        const d = data.daily;
+        const alerts = data.alerts;
+
+        document.getElementById('dTemp').innerText = Math.round(c.temperature_2m) + "°";
+        const wInfo = WMO_CODE[c.weather_code] || ["❓", "未知"];
+        document.getElementById('dWeather').innerText = wInfo[0] + " " + wInfo[1];
+        document.getElementById('dDayNight').innerText = c.is_day ? "☀️ 白天" : "🌙 夜晚";
+
+        const pm = c.pm25;
+        const pmEl = document.getElementById('dPM');
+        pmEl.innerText = pm;
+        pmEl.style.color = pm > 75 ? '#dc3545' : (pm > 35 ? '#f59e0b' : '#10b981');
+
+        document.getElementById('dWindDir').innerText = c.wind_direction_str;
+        document.getElementById('dWindSpeed').innerText = c.wind_speed_10m + "km/h";
+        document.getElementById('dFeel').innerText = Math.round(c.apparent_temperature);
+        document.getElementById('dHum').innerText = c.relative_humidity_2m;
+        document.getElementById('dPress').innerText = Math.round(c.surface_pressure);
+
+        const alertBox = document.getElementById('alertContainer');
+        alertBox.innerHTML = '';
+        if (alerts.length > 0) {
+            alerts.forEach(a => {
+                const pulseClass = (a.level === 'danger') ? 'pulse-danger' : '';
+                alertBox.innerHTML += `<div class="alert-item alert-${a.level} ${pulseClass}">⚠️ ${a.msg}</div>`;
+            });
+        } else {
+            alertBox.innerHTML = `<div class="alert-item alert-safe">✅ 气象状况平稳，适宜出行</div>`;
+        }
+
+        const histRow = document.getElementById('historyRow');
+        const futRow = document.getElementById('futureRow');
+        histRow.innerHTML = ''; futRow.innerHTML = '';
+
+        d.time.forEach((t, i) => {
+            const code = d.weather_code[i];
+            const icon = (WMO_CODE[code] || ["", ""])[0];
+            const date = t.slice(5).replace('-', '/');
+            const html = `<div class="forecast-item ${i===2 ? 'today':''}"><div class="f-date">${i===0?'前天':(i===1?'昨天':(i===2?'今天':date))}</div><div class="f-icon">${icon}</div><div><span class="text-danger">${Math.round(d.temperature_2m_max[i])}°</span> <span class="text-primary">${Math.round(d.temperature_2m_min[i])}°</span></div></div>`;
+            if (i < 2) histRow.innerHTML += html; else futRow.innerHTML += html;
+        });
+
+        const ctx = document.getElementById('tempChart').getContext('2d');
+        if (myLineChart) myLineChart.destroy();
+        myLineChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: d.time.map(t => t.slice(5)),
+                datasets: [
+                    { label: '最高', data: d.temperature_2m_max, borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.1)', fill:true, tension: 0.4 },
+                    { label: '最低', data: d.temperature_2m_min, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)', fill:true, tension: 0.4 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, annotation: { annotations: { line1: { type: 'line', xMin: 2, xMax: 2, borderColor: '#94a3b8', borderDash: [5, 5], borderWidth: 2, label: { display: true, content: '今天', position: 'start', backgroundColor: '#94a3b8' } } } } },
+                scales: { y: { display: false }, x: { grid: { display: false } } }
+            }
+        });
+    }
+
+    // --- 核心更新：异步加载列表卡片 ---
+    async function loadSavedList() {
+        const res = await fetch('/api/saved_cities');
+        savedCities = await res.json();
+        const list = document.getElementById('savedList');
+        list.innerHTML = '';
+
+        savedCities.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'city-card';
+            div.id = `card-${c.name}`;
+            // 初始加载骨架屏
+            div.innerHTML = `
+                <div class="c-header">
+                    <span class="c-name">${c.name}</span>
+                    <span class="c-prov">${c.province}</span>
+                </div>
+                <div class="text-center py-2" id="loader-${c.name}">
+                    <div class="spinner-border spinner-border-sm text-secondary"></div>
+                </div>
+                <div id="content-${c.name}" style="display:none">
+                    <div class="c-body">
+                        <div class="c-temp" id="temp-${c.name}">--°</div>
+                        <div class="c-icon" id="icon-${c.name}">--</div>
+                    </div>
+                    <div class="c-footer">
+                        <span class="badge-pm" id="pm-${c.name}">PM --</span>
+                        <span class="badge-alert" id="alert-${c.name}">⚠️ 警报</span>
+                    </div>
+                </div>
+                <span class="position-absolute top-0 end-0 p-2 text-danger" style="cursor:pointer; font-size:1.2rem; line-height:0.5" onclick="event.stopPropagation(); delCity('${c.name}')">&times;</span>
+            `;
+            div.onclick = () => { selectCity(c); zoomToCity(c); };
+            list.appendChild(div);
+
+            // 异步获取数据填充
+            fetchCitySummary(c);
+        });
+        updateBtn();
+    }
+
+    async function fetchCitySummary(c) {
+        try {
+            const res = await fetch(`/api/weather_detail?lat=${c.lat}&lon=${c.lon}`);
+            const data = await res.json();
+            if(data.status !== 'success') return;
+
+            const curr = data.current;
+            const daily = data.daily; // 注意：daily[2] 是今天
+            const alerts = data.alerts;
+
+            // 填充数据
+            document.getElementById(`loader-${c.name}`).style.display = 'none';
+            document.getElementById(`content-${c.name}`).style.display = 'block';
+
+            // 今天气温 (Index 2 is today due to past_days=2)
+            const maxT = Math.round(daily.temperature_2m_max[2]);
+            const minT = Math.round(daily.temperature_2m_min[2]);
+            document.getElementById(`temp-${c.name}`).innerText = `${maxT}° / ${minT}°`;
+
+            // 图标
+            const wInfo = WMO_CODE[curr.weather_code] || ["❓"];
+            document.getElementById(`icon-${c.name}`).innerText = wInfo[0];
+
+            // PM2.5
+            const pm = Math.round(curr.pm25);
+            const pmEl = document.getElementById(`pm-${c.name}`);
+            pmEl.innerText = `PM ${pm}`;
+            pmEl.style.backgroundColor = pm > 75 ? '#dc3545' : (pm > 35 ? '#f59e0b' : '#10b981');
+
+            // 预警处理
+            const card = document.getElementById(`card-${c.name}`);
+            const alertBadge = document.getElementById(`alert-${c.name}`);
+
+            // 检查是否有严重预警
+            const hasDanger = alerts.some(a => a.level === 'danger');
+            const hasWarning = alerts.some(a => a.level === 'warning');
+
+            if (hasDanger) {
+                card.classList.add('alert-danger');
+                alertBadge.style.display = 'inline-block';
+                alertBadge.innerText = '⚡ 恶劣天气';
+            } else if (hasWarning) {
+                card.classList.add('alert-warning');
+                alertBadge.style.display = 'inline-block';
+                alertBadge.innerText = '⚠️ 注意';
+                alertBadge.style.background = '#fffbeb';
+                alertBadge.style.color = '#92400e';
+                alertBadge.style.border = '1px solid #fde68a';
+            }
+
+        } catch(e) { console.error(e); }
+    }
+
+    async function toggleSave() {
+        if(!currentCity) return;
+        const action = savedCities.some(c=>c.name===currentCity.name) ? 'remove' : 'add';
+        await fetch('/api/manage_city', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action, city:currentCity}) });
+        loadSavedList();
+    }
+    async function delCity(name) {
+        await fetch('/api/manage_city', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:'remove', city:{name}}) });
+        loadSavedList();
+    }
+    function updateBtn() {
+        if(!currentCity) return;
+        const btn = document.getElementById('btnAction');
+        const isSaved = savedCities.some(c=>c.name===currentCity.name);
+        btn.innerHTML = isSaved ? "💔 取消关注" : "❤️ 加入关注";
+        btn.className = isSaved ? "btn btn-outline-danger w-100 mt-auto py-2 fw-bold shadow-sm rounded-pill" : "btn btn-dark w-100 mt-auto py-2 fw-bold shadow-sm rounded-pill";
+    }
+</script>
+</body>
+</html>
