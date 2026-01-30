@@ -1,10 +1,11 @@
-# 🌦️ Meteo Command | 中国各省县市区天气预报系统
+<img width="2149" height="1226" alt="image" src="https://github.com/user-attachments/assets/0f46959c-70ee-4e60-80d3-ce671d6d9709" /># 🌦️ Meteo Command | 中国各省县市区天气预报系统
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/) [![Flask](https://img.shields.io/badge/Flask-2.0%2B-green)](https://flask.palletsprojects.com/)[![License](https://img.shields.io/badge/license-MIT-orange)](LICENSE)
 
 一个基于 Python Flask 构建的现代化全域气象监测系统。集成中国地级市可视化地图、多维度热力图层、极端天气智能预警以及历史数据回溯功能。
 
 无需 API Key，开箱即用，数据源自 Open-Meteo。
+<img width="2149" height="1226" alt="image" src="https://github.com/user-attachments/assets/271fe581-cef1-4f5f-8108-75a60b0723ec" />
 
 ---
 
@@ -195,5 +196,6 @@ Plaintext
 欢迎提交 Issue 或 Pull Request！ 如果你喜欢这个项目，请给一个 ⭐️ Star！
 
 ## 📄 License
+
 
 [MIT License](https://www.google.com/search?q=LICENSE)
