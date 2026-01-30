@@ -1,7 +1,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/) [![Flask](https://img.shields.io/badge/Flask-2.0%2B-green)](https://flask.palletsprojects.com/)[![License](https://img.shields.io/badge/license-MIT-orange)](LICENSE)
 
-一个基于 Python Flask 构建的现代化全域气象监测系统。集成中国地级市可视化地图、多维度热力图层、极端天气智能预警以及历史数据回溯功能。
+一个基于 Python Flask 构建的现代化全域气象监测系统。集成中国地级市可视化地图、天气基本情况、极端天气、自然灾害天气智能预警等功能。
 
 无需 API Key，开箱即用，数据源自 Open-Meteo。
 <img width="2149" height="1226" alt="image" src="https://github.com/user-attachments/assets/271fe581-cef1-4f5f-8108-75a60b0723ec" />
@@ -12,7 +12,6 @@
 
 * **🌏 交互式可视化地图**
     * 基于 **ECharts** 的中国地理信息展示。
-    * **多图层切换**：支持正常视图、温度热力图、气压分布图、云量分布图。
     * **智能交互**：点击城市平滑缩放定位（Fly-to），支持模糊搜索全国城市。
     * **性能优化**：后端并发请求，前端按需加载，流畅渲染 300+ 地级市节点。
 
@@ -198,4 +197,5 @@ Plaintext
 
 
 [MIT License](https://www.google.com/search?q=LICENSE)
+
 
