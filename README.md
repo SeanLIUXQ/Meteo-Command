@@ -1,4 +1,3 @@
-<img width="2149" height="1226" alt="image" src="https://github.com/user-attachments/assets/0f46959c-70ee-4e60-80d3-ce671d6d9709" /># 🌦️ Meteo Command | 中国各省县市区天气预报系统
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/) [![Flask](https://img.shields.io/badge/Flask-2.0%2B-green)](https://flask.palletsprojects.com/)[![License](https://img.shields.io/badge/license-MIT-orange)](LICENSE)
 
@@ -199,3 +198,4 @@ Plaintext
 
 
 [MIT License](https://www.google.com/search?q=LICENSE)
+
