@@ -122,7 +122,7 @@ python -m playwright install chromium
 python tests/browser_smoke.py --url http://127.0.0.1:5000
 ```
 
-最后一条在当前平台构建可执行程序，输出 `dist/` 下的 ZIP 与 SHA-256 文件。Windows 发布包须在 Windows 构建。CI 配置覆盖 Windows / Linux 和 Python 3.10、3.12、3.13；发布工作流构建 Windows 包并执行本地健康检查。具体已执行验证以 [Release Notes](RELEASE_NOTES.md) 为准。
+`python scripts/build_release.py` 在当前平台构建可执行程序，输出 `dist/` 下的 ZIP 与 SHA-256 文件。Windows 发布包须在 Windows 构建。CI 配置覆盖 Windows / Linux 和 Python 3.10、3.12、3.13；发布工作流构建 Windows 包并执行本地健康检查。具体已执行验证以 [Release Notes](RELEASE_NOTES.md) 为准。
 
 ```text
 Meteo-Command/
