@@ -1,0 +1,10 @@
+services:
+  meteo:
+    build: .
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - meteo-data:/data
+    restart: unless-stopped
+volumes:
+  meteo-data:
